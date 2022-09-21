@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
@@ -23,11 +22,11 @@ const (
 type DeviceAuth struct {
 	DeviceCode              string `json:"device_code"`
 	UserCode                string `json:"user_code"`
-	VerificationURI         string `json:"verification_uri,verification_url"`
+	VerificationURI         string `json:"verification_uri"`
 	VerificationURIComplete string `json:"verification_uri_complete,omitempty"`
 	ExpiresIn               int    `json:"expires_in"`
 	Interval                int    `json:"interval,omitempty"`
-	raw                     map[string]interface{}
+	raw                     map[string]interface{} `json:"-"`
 }
 
 func retrieveDeviceAuth(ctx context.Context, c *Config, v url.Values) (*DeviceAuth, error) {
@@ -42,7 +41,7 @@ func retrieveDeviceAuth(ctx context.Context, c *Config, v url.Values) (*DeviceAu
 		return nil, err
 	}
 
-	body, err := ioutil.ReadAll(io.LimitReader(r.Body, 1<<20))
+	body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
 	if err != nil {
 		return nil, fmt.Errorf("oauth2: cannot auth device: %v", err)
 	}
@@ -59,11 +58,10 @@ func retrieveDeviceAuth(ctx context.Context, c *Config, v url.Values) (*DeviceAu
 		return nil, err
 	}
 
-	_ = json.Unmarshal(body, &da.raw)
-
 	// Azure AD supplies verification_url instead of verification_uri
 	if da.VerificationURI == "" {
-		da.VerificationURI, _ = da.raw["verification_url"].(string)
+		_ = json.Unmarshal(body, &da.raw)
+		da.VerificationURI, _ = da.raw["verification_url"].(string) // https://go.dev/ref/spec#Type_assertions
 	}
 
 	return da, nil

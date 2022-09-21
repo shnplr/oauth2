@@ -262,7 +262,7 @@ func (c *Config) Poll(ctx context.Context, da *DeviceAuth, opts ...AuthCodeOptio
 		interval = 5
 	}
 
-	for {
+	for i := 1; ; i++ {
 		time.Sleep(time.Duration(interval) * time.Second)
 
 		tok, err := retrieveToken(ctx, c, v)
@@ -275,7 +275,9 @@ func (c *Config) Poll(ctx context.Context, da *DeviceAuth, opts ...AuthCodeOptio
 		case errAccessDenied, errExpiredToken:
 			return tok, errors.New("oauth2: " + errTyp)
 		case errSlowDown:
-			interval += 5
+			if i > 24 {
+				interval += 5
+			}
 			fallthrough
 		case errAuthorizationPending:
 		}
